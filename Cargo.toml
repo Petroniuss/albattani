@@ -4,25 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# The egui immediate mode gui library
-egui = "0.16.0"
-# Backend-agnostic interface for writing apps using egui
-epi = "0.16.0"
-# Winit integration with egui
-egui_winit_platform = "0.13.0"
-# logging
-env_logger = { version = "0.9", default-features = false, features = ["termcolor", "atty"] }
-# Linear algebra library
-glam = "0.20.0"
-# Portable implementation of Instant.
-instant = { version = "0.1", features = ["wasm-bindgen"] }
-# Renderer core
-rend3 = { version = "0.3.0" }
-# Egui renderer integration
-rend3-egui = { version = "0.3.0" }
-# Framework that deals with the event loop, setting up the renderer, and platform differences.
-rend3-framework = { version = "0.3.0" }
-# Programmable render list that dictates how the scene renders
-rend3-routine = { version = "0.3.0" }
-# Windowing
-winit = "0.26.0"
+kiss3d = "0.35.0"
+nalgebra     = "0.30"
+env_logger = { version = "0.9" }
