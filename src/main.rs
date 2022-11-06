@@ -6,6 +6,9 @@ use kiss3d::window::{State, Window};
 use kiss3d::nalgebra::{UnitQuaternion, Vector3};
 use nalgebra::Translation3;
 
+// ----------------------------------------------------------
+//                    Open Questions
+// ----------------------------------------------------------
 
 // all right, this looks like it's exactly what I want :)
 
@@ -15,7 +18,69 @@ API:
 - load a bunch of nodes and edges
 - somehow highlight the node/edge?
 
+- we need to somehow map from simulation's node/edge to scene node.
+  How do we store such a mapping?
+
 */
+
+
+// ----------------------------------------------------------
+//                    Simulation
+// ----------------------------------------------------------
+
+// might carry some additional data.
+struct Edge {
+    from: usize,
+    to: usize
+}
+
+// might carry some additional data.
+struct Vertex {
+    id: usize,
+}
+
+struct Graph {
+    vertices: Vec<Vertex>,
+    edges: Vec<Vec<Edge>>,
+}
+
+impl Graph {
+    fn construct_graph(
+        n: usize,
+        edges_iter: impl IntoIterator<Item = (usize, usize)>
+    ) -> Graph {
+        let mut vertices = (0..n)
+            .into_iter()
+            .map(|id| Vertex { id } )
+            .collect();
+
+        let mut edges = Vec::with_capacity(n);
+        for _ in 0..n {
+            edges.push(Vec::new());
+        }
+
+        for (from, to) in edges_iter.into_iter() {
+            edges[from].push(Edge {
+                from,
+                to
+            });
+        }
+
+        Graph {
+            vertices,
+            edges
+        }
+    }
+}
+
+trait SimulationState<'a> {
+    fn graph() -> &'a Graph;
+}
+
+
+// ----------------------------------------------------------
+//                    Rendering
+// ----------------------------------------------------------
 
 struct AppState {
     c: Vec<SceneNode>,
