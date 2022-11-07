@@ -4,10 +4,11 @@ use kiss3d::light::Light;
 use kiss3d::nalgebra::{UnitQuaternion, Vector3};
 use kiss3d::scene::SceneNode;
 use kiss3d::window::{State, Window};
-use nalgebra::Translation3;
+use nalgebra::{Isometry3, Point3, Quaternion, Rotation3, Translation3};
 use random_color::{Color, Luminosity, RandomColor};
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
+use kiss3d::ncollide3d::query::NeighborhoodGeometry::Point;
 
 // ----------------------------------------------------------
 //                    Open Questions
@@ -94,6 +95,9 @@ trait Simulation {
 
 fn test_graph() -> Graph {
     Graph::construct_graph(5, vec![(0, 1), (1, 2), (2, 3), (3, 0), (1, 4), (4, 0)])
+    // Graph::construct_graph(2, vec![
+    //     (0, 1)]
+    // )
 }
 
 // ----------------------------------------------------------
@@ -124,13 +128,15 @@ struct SimulationRenderer {
     simulation_update_rx: Receiver<SimulationUpdate>,
 
     // steady state (it rarely changes)
-    graph_nodes: Vec<SceneNode>, // todo: we need to figure out a way how to draw edges!
+    vertex_nodes: Vec<SceneNode>, // todo: we need to figure out a way how to draw edges!
 
                                  // temporary state. (might change on every frame I guess)
                                  // ...
 }
 
 static GRAPH_NODE_RADIUS: f32 = 0.45;
+static EDGE_COLOR: [f32; 3] = [0.8, 0.1, 0.2];
+static EDGE_WIDTH: f32 = 0.01;
 
 fn gen_random_color(node_id: usize) -> [f32; 3] {
     let [r, g, b] = RandomColor::new()
@@ -143,32 +149,133 @@ fn gen_random_color(node_id: usize) -> [f32; 3] {
     [norm(r), norm(g), norm(b)]
 }
 
+// TODO: render graph edges.
 impl SimulationRenderer {
     fn from_graph(
         graph: &Graph,
         rx: Receiver<SimulationUpdate>,
         window: &mut Window,
     ) -> SimulationRenderer {
-        // TODO: here we may want to find positions for every node. somehow?
-        // force_graph: https://docs.rs/force_graph/latest/force_graph/
-        let mut graph_nodes = vec![];
+        // TODO: we need to find positions for every node. somehow?
+        // something sophisticated - force_graph https://docs.rs/force_graph/latest/force_graph/?
+        let mut vertex_nodes = vec![];
 
+
+        // and something less sophisticated :)
         for id in 0..graph.vertices.len() {
-            let mut graph_node = window.add_sphere(GRAPH_NODE_RADIUS);
+            let mut vertex_node = window.add_sphere(GRAPH_NODE_RADIUS);
             let x = id as f32;
             let y = (id % 2) as f32;
             let z = (id % 3) as f32 * 2.0;
-            graph_node.append_translation(&Translation3::new(x, y, z));
+            vertex_node.append_translation(&Translation3::new(x, y, z));
 
             let [r, g, b] = gen_random_color(id);
-            graph_node.set_color(r, g, b);
+            vertex_node.set_color(r, g, b);
 
-            graph_nodes.push(graph_node);
+            vertex_nodes.push(vertex_node);
         }
+
+        // add obj -> path?
+        // generate a path based on a node's position.
+        use crate::Edge;
+
+        // well this needs to happen inside simulation renderer.
+        // well these lines should really be some sort of scene nodes.
+        for edges in graph.edges.iter() {
+            for &Edge { from, to } in edges {
+                let from_node = &vertex_nodes[from];
+                let to_node = &vertex_nodes[to];
+
+
+                let from_position = from_node
+                    .data()
+                    .local_translation()
+                    .transform_point(&Point3::origin());
+
+                let to_position = to_node
+                    .data()
+                    .local_translation()
+                    .transform_point(&Point3::origin());
+
+                // well this could be our line:
+                {
+                    let r = EDGE_WIDTH;
+                    let h = nalgebra::distance(&from_position, &to_position);
+
+                    let mut edge_node = window.add_cylinder(r, h);
+                    edge_node.set_color(EDGE_COLOR[0], EDGE_COLOR[1], EDGE_COLOR[2]);
+
+                    // first apply rotation!
+                    // and then apply translation!
+
+                    // translation
+                    // {
+                    //     edge_node.append_translation(&Translation3::from(from_position));
+                    //     edge_node.append_translation(&Translation3::from([0.0, h / 2.0, 0.0]));
+                    // }
+
+                    // rotation
+                    {
+                        // that's the tricky bit I guess.
+                        // well that's a little bit of math . ;d
+
+                        let direction = to_position.coords - from_position.coords;
+                        // let up = Vector3::y();
+                        //
+                        // // I am not sure if this should be position
+                        let rotation = Rotation3::rotation_between(
+                            &edge_node.data().local_translation().vector,
+                            // edge_node.data().local_rotation().to_rotation_matrix(),
+                            &Vector3::from_data(direction.data),
+                        ).unwrap_or_else(|| Rotation3::identity());
+
+                        let rotation: Rotation3<f32> = Rotation3::rotation_between(
+                            &Vector3::y(),
+                            &Vector3::x()
+                        ).unwrap();
+
+
+                        // println!("from_node: {}, to_node: {}", from, to);
+                        // println!("from_position: {}", from_position);
+                        // println!("to_position: {}", to_position);
+                        // println!("direction: {}", direction);
+                        //
+                        // println!("rotation:{}", rotation);
+                        //
+                        // println!("initial_rotation: {}", edge_node.data().local_rotation());
+                        // rotations are with respect to the center,
+                        // not with the respect to the beginning of the cylinder
+                        // how to deal with this?
+                        let cylinder_position = Point3::from(edge_node.data().local_translation().vector);
+                        println!("cylinder_position: {}", cylinder_position);
+
+
+                        edge_node.append_rotation(&UnitQuaternion::from(rotation));
+                    }
+                }
+
+                {
+                    let r = EDGE_WIDTH;
+                    let h = nalgebra::distance(&from_position, &to_position);
+
+                    let mut edge_node = window.add_cylinder(r, h);
+                    edge_node.set_color(EDGE_COLOR[0], EDGE_COLOR[1], EDGE_COLOR[2]);
+
+
+                    // translation
+                    {
+                        edge_node.append_translation(&Translation3::from(from_position));
+                        edge_node.append_translation(&Translation3::from([0.0, h / 2.0, 0.0]));
+                    }
+                }
+
+            }
+        }
+
 
         SimulationRenderer {
             simulation_update_rx: rx,
-            graph_nodes,
+            vertex_nodes,
         }
     }
 }
@@ -184,6 +291,7 @@ fn main() {
     let (tx, rx): (Sender<SimulationUpdate>, Receiver<SimulationUpdate>) = mpsc::channel();
     let graph = test_graph();
     let renderer = SimulationRenderer::from_graph(&graph, rx, &mut window);
+    window.set_background_color(51.0 / 255.0, 102.0 / 255.0, 153.0 / 255.0);
 
     window.render_loop(renderer)
 }
