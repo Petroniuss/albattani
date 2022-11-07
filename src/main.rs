@@ -4,7 +4,7 @@ use kiss3d::light::Light;
 use kiss3d::nalgebra::{UnitQuaternion, Vector3};
 use kiss3d::scene::SceneNode;
 use kiss3d::window::{State, Window};
-use nalgebra::{Isometry3, Point3, Quaternion, Rotation3, Translation3};
+use nalgebra::{Isometry3, Point3, Quaternion, Rotation3, Translation3, UnitVector3, Vector};
 use random_color::{Color, Luminosity, RandomColor};
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
@@ -197,78 +197,33 @@ impl SimulationRenderer {
                     .local_translation()
                     .transform_point(&Point3::origin());
 
-                // well this could be our line:
+                // render an edge.
                 {
                     let r = EDGE_WIDTH;
                     let h = nalgebra::distance(&from_position, &to_position);
 
-                    let mut edge_node = window.add_cylinder(r, h);
-                    edge_node.set_color(EDGE_COLOR[0], EDGE_COLOR[1], EDGE_COLOR[2]);
-
-                    // first apply rotation!
-                    // and then apply translation!
-
-                    // translation
-                    // {
-                    //     edge_node.append_translation(&Translation3::from(from_position));
-                    //     edge_node.append_translation(&Translation3::from([0.0, h / 2.0, 0.0]));
-                    // }
-
-                    // rotation
                     {
-                        // that's the tricky bit I guess.
-                        // well that's a little bit of math . ;d
 
-                        let direction = to_position.coords - from_position.coords;
-                        // let up = Vector3::y();
-                        //
-                        // // I am not sure if this should be position
-                        let rotation = Rotation3::rotation_between(
-                            &edge_node.data().local_translation().vector,
-                            // edge_node.data().local_rotation().to_rotation_matrix(),
-                            &Vector3::from_data(direction.data),
-                        ).unwrap_or_else(|| Rotation3::identity());
+                        let mut edge_node = window.add_cylinder(r, h);
+                        edge_node.set_color(0.0, 0.0, 0.0);
 
-                        let rotation: Rotation3<f32> = Rotation3::rotation_between(
-                            &Vector3::y(),
-                            &Vector3::x()
-                        ).unwrap();
+                        let v0 = Vector3::y_axis();
+                        let v1 = to_position - from_position;
 
+                        // rotation
+                        {
+                            let rotation = Rotation3::rotation_between(&v0, &v1).unwrap();
+                            edge_node.append_rotation(&UnitQuaternion::from(rotation));
+                        }
 
-                        // println!("from_node: {}, to_node: {}", from, to);
-                        // println!("from_position: {}", from_position);
-                        // println!("to_position: {}", to_position);
-                        // println!("direction: {}", direction);
-                        //
-                        // println!("rotation:{}", rotation);
-                        //
-                        // println!("initial_rotation: {}", edge_node.data().local_rotation());
-                        // rotations are with respect to the center,
-                        // not with the respect to the beginning of the cylinder
-                        // how to deal with this?
-                        let cylinder_position = Point3::from(edge_node.data().local_translation().vector);
-                        println!("cylinder_position: {}", cylinder_position);
-
-
-                        edge_node.append_rotation(&UnitQuaternion::from(rotation));
+                        // translation
+                        {
+                            let v1: Point3<f32> = (to_position - from_position).into();
+                            edge_node.append_translation(&Translation3::from(from_position));
+                            edge_node.append_translation(&Translation3::from(v1.coords / 2.0));
+                        }
                     }
                 }
-
-                {
-                    let r = EDGE_WIDTH;
-                    let h = nalgebra::distance(&from_position, &to_position);
-
-                    let mut edge_node = window.add_cylinder(r, h);
-                    edge_node.set_color(EDGE_COLOR[0], EDGE_COLOR[1], EDGE_COLOR[2]);
-
-
-                    // translation
-                    {
-                        edge_node.append_translation(&Translation3::from(from_position));
-                        edge_node.append_translation(&Translation3::from([0.0, h / 2.0, 0.0]));
-                    }
-                }
-
             }
         }
 
