@@ -20,49 +20,21 @@ use crate::simulation_renderer::SimulationRenderer;
 //                    Open Questions
 // ----------------------------------------------------------
 /*
-
-We want to be able to simulate walking through a graph:
-    So we may want to create a simple simulation which just follows
-    some random nodes connected by edges and highlight a node an edge that was selected.
-
-    For that we need to be able to draw a graph
-    - somehow place the nodes in some random positions
-        - we may want to run force simulation there.
-    - connect the nodes via edges
-    - highlight a node and an edge that was selected by a simulation.
-    - make sure that simulation moves smoothly.
-
-Simulation API:
-- load a bunch of nodes and edges - check.
-
-
-- we need to somehow map from simulation's node/edge to scene node.
-    How do we store such a mapping?
-
-Rendering API:
-- somehow highlight the node/edge?
-    This has to be indicated by simulation I guess.
+- Well I'd have to read the paper first :)
 
 */
-
 // ----------------------------------------------------------
-//                    Rendering
+//                    Implementation Notes
 // ----------------------------------------------------------
+/*
 
-// we can have some main loop of the simulation.
-// and we need two way communication.
-// Simulation -> iteration() -> show_update() -> onComplete() -> loop!
-// we need some sort of a callback.
+There are two threads:
+- main thread running event loop which renders the simulation.
+- simulation thread which does all the interesting computations
+    that sends events via a channel to main thread.
 
-// or we could use channels:
-// in the event loop check if there's something in the channel
-// if so start rendering it
-// once done (after several frames..)
-// send a message through a different channel to the simulation
-// that rendering of a previous step has completed.
-// the simulation thread can simpy sleep waiting on a channel.
-// while the renderer might have to poll the queue or something.
-// sounds cool!
+Potentially simulation events could be recorded and then rendered offline.
+*/
 
 fn test_graph() -> Graph {
     Graph::construct_graph(5, vec![(0, 1), (1, 2), (2, 3), (3, 0), (1, 4), (4, 0)])
