@@ -1,29 +1,28 @@
 extern crate kiss3d;
 
-use color_eyre::Result;
-use log::info;
-
 use std::cell::Ref;
 use std::cell::RefCell;
-
 use std::rc::Rc;
+use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
+use std::thread::sleep;
+use std::time::Duration;
 
 use kiss3d::nalgebra::{UnitQuaternion, Vector3};
 use kiss3d::scene::SceneNode;
 use kiss3d::window::{State, Window};
 
 use nalgebra::Point3;
-
 use nalgebra::Rotation3;
 use nalgebra::Translation3;
 
 use color_eyre::eyre::eyre;
+use color_eyre::Result;
+use log::{info, LevelFilter};
+
 use rand::{thread_rng, Rng};
 use random_color::{Color, Luminosity, RandomColor};
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{mpsc, Arc};
-use std::thread::sleep;
-use std::time::Duration;
+
 use tap::Tap;
 
 // ----------------------------------------------------------
@@ -113,8 +112,13 @@ impl Simulation {
         let mut selected_edge = self.graph.edges[0][0];
 
         loop {
-            self.simulation_update_sender
-                .send(SimulationUpdate::EdgeSelected(selected_edge));
+            if let Err(_err) = self
+                .simulation_update_sender
+                .send(SimulationUpdate::EdgeSelected(selected_edge))
+            {
+                return Ok(());
+            }
+
             info!("Selected: {:?}", selected_edge);
             sleep(Duration::from_secs(2));
 
@@ -248,7 +252,6 @@ impl SimulationRenderer {
                         edge_node.append_translation(&Translation3::from(v1.coords / 2.0));
                     }
 
-
                     edge_node
                 };
 
@@ -297,7 +300,9 @@ impl State for SimulationRenderer {
 
 fn main() -> Result<()> {
     color_eyre::install()?;
-    env_logger::init();
+    env_logger::builder()
+        .filter_level(LevelFilter::Info)
+        .try_init()?;
 
     let (tx, rx): (Sender<SimulationUpdate>, Receiver<SimulationUpdate>) = mpsc::channel();
     let graph = test_graph();
