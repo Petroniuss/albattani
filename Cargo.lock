@@ -43,6 +43,7 @@ name = "albattani"
 version = "0.1.0"
 dependencies = [
  "color-eyre",
+ "colors-transform",
  "env_logger",
  "kiss3d",
  "lazy_static",
@@ -268,6 +269,12 @@ name = "color_quant"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
+
+[[package]]
+name = "colors-transform"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9226dbc05df4fb986f48d730b001532580883c4c06c5d1c213f4b34c1c157178"
 
 [[package]]
 name = "core-foundation"

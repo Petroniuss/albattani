@@ -8,9 +8,12 @@ use kiss3d::window::Window;
 
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
+use colors_transform::{Color, Rgb};
 use log::LevelFilter;
 
-use crate::simulation::{Graph, SimpleSimulation, Simulation, SimulationParameters, SimulationUpdate};
+use crate::simulation::{
+    Graph, SimpleSimulation, Simulation, SimulationParameters, SimulationUpdate,
+};
 use crate::simulation_renderer::SimulationRenderer;
 
 // ----------------------------------------------------------
@@ -42,10 +45,6 @@ Rendering API:
 
 */
 
-fn test_graph() -> Graph {
-    Graph::construct_graph(5, vec![(0, 1), (1, 2), (2, 3), (3, 0), (1, 4), (4, 0)])
-}
-
 // ----------------------------------------------------------
 //                    Rendering
 // ----------------------------------------------------------
@@ -64,6 +63,10 @@ fn test_graph() -> Graph {
 // the simulation thread can simpy sleep waiting on a channel.
 // while the renderer might have to poll the queue or something.
 // sounds cool!
+
+fn test_graph() -> Graph {
+    Graph::construct_graph(5, vec![(0, 1), (1, 2), (2, 3), (3, 0), (1, 4), (4, 0)])
+}
 
 fn main() -> Result<()> {
     color_eyre::install()?;
@@ -84,13 +87,27 @@ fn main() -> Result<()> {
     });
 
     let graph = test_graph();
-    let mut window = Window::new("Kiss3d: dynamic systems simulation");
-    let renderer = SimulationRenderer::from_graph(&graph, rx, &mut window);
-    window.set_background_color(51.0 / 255.0, 102.0 / 255.0, 153.0 / 255.0);
-    window.render_loop(renderer);
+    let mut window = initialize_window()?;
+    let simulation_renderer = SimulationRenderer::from_graph(&graph, rx, &mut window);
+    window.render_loop(simulation_renderer);
 
     match simulation_thread_handle.join() {
         Ok(ok) => ok,
         Err(_) => Err(eyre!("Simulation thread failed with an exception.")),
     }
+}
+
+fn initialize_window() -> Result<Window> {
+    let mut window = Window::new("Kiss3d: dynamic systems simulation");
+
+    let background_color =
+        Rgb::from_hex_str("023e8a").map_err(|e| eyre!("hex string parsing failure: {:#?}", e))?;
+
+    window.set_background_color(
+        background_color.get_red() / 255.0,
+        background_color.get_green() / 255.0,
+        background_color.get_blue() / 255.0,
+    );
+
+    Ok(window)
 }

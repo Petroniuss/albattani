@@ -12,7 +12,9 @@ use nalgebra::Translation3;
 use random_color::{Color, Luminosity, RandomColor};
 
 use crate::simulation::{Edge, Graph, SimulationUpdate, VertexId};
+use colors_transform::{Color as RgbColor, Rgb};
 use kiss3d::window::{State, Window};
+use lazy_static::lazy_static;
 use std::sync::mpsc::Receiver;
 use tap::Tap;
 
@@ -30,9 +32,31 @@ pub(crate) struct SimulationRenderer {
 }
 
 static GRAPH_NODE_RADIUS: f32 = 0.45;
-static DEFAULT_EDGE_COLOR: [f32; 3] = [0.8, 0.1, 0.2];
-static HIGHLIGHT_EDGE_COLOR: [f32; 3] = [0.2, 0.8, 0.2];
 static EDGE_WIDTH: f32 = 0.01;
+
+lazy_static! {
+    static ref HIGHLIGHT_EDGE_COLOR: Rgb = Rgb::from_hex_str("e63946").unwrap();
+    static ref DEFAULT_EDGE_COLOR: Rgb = Rgb::from_hex_str("a7c957").unwrap();
+}
+
+fn set_node_color(node: &mut SceneNode, color: &Rgb) {
+    node.set_color(
+        color.get_red() / 255.0,
+        color.get_green() / 255.0,
+        color.get_blue() / 255.0,
+    );
+}
+
+fn gen_random_color(_node_id: usize) -> [f32; 3] {
+    let [r, g, b] = RandomColor::new()
+        .hue(Color::Orange)
+        .luminosity(Luminosity::Light)
+        .alpha(1.0)
+        .to_rgb_array();
+
+    let norm = |v: u8| v as f32 / 255.0;
+    [norm(r), norm(g), norm(b)]
+}
 
 impl State for SimulationRenderer {
     fn step(&mut self, _: &mut Window) {
@@ -40,10 +64,9 @@ impl State for SimulationRenderer {
             match update {
                 SimulationUpdate::HighlightEdge(Edge { from, to }) => {
                     if let Some(edge_node) = self.highlighted_edge.take() {
-                        let color = &DEFAULT_EDGE_COLOR;
                         edge_node
                             .borrow_mut()
-                            .set_color(color[0], color[1], color[2]);
+                            .tap_mut(|node| set_node_color(node, &DEFAULT_EDGE_COLOR));
                     }
 
                     let edge_node = self.edge_nodes[from]
@@ -52,27 +75,15 @@ impl State for SimulationRenderer {
                         .map(|tuple| tuple.1.clone())
                         .unwrap();
 
-                    let color = &HIGHLIGHT_EDGE_COLOR;
                     edge_node
                         .borrow_mut()
-                        .tap_mut(|e| e.set_color(color[0], color[1], color[2]));
+                        .tap_mut(|node| set_node_color(node, &HIGHLIGHT_EDGE_COLOR));
 
                     self.highlighted_edge = Some(edge_node.clone());
                 }
             }
         };
     }
-}
-
-fn gen_random_color(_node_id: usize) -> [f32; 3] {
-    let [r, g, b] = RandomColor::new()
-        .hue(Color::Purple)
-        .luminosity(Luminosity::Light)
-        .alpha(1.0)
-        .to_rgb_array();
-
-    let norm = |v: u8| v as f32 / 255.0;
-    [norm(r), norm(g), norm(b)]
 }
 
 impl SimulationRenderer {
@@ -124,9 +135,7 @@ impl SimulationRenderer {
                     let h = nalgebra::distance(&from_position, &to_position);
 
                     let mut edge_node = window.add_cylinder(r, h);
-
-                    let color = &DEFAULT_EDGE_COLOR;
-                    edge_node.set_color(color[0], color[1], color[2]);
+                    set_node_color(&mut edge_node, &DEFAULT_EDGE_COLOR);
 
                     let v0 = Vector3::y_axis();
 
@@ -159,4 +168,3 @@ impl SimulationRenderer {
         }
     }
 }
-
