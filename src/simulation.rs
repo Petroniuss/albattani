@@ -79,8 +79,8 @@ pub(crate) type VertexId = usize;
 // might carry some additional data.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Edge {
-    pub(crate) from: usize,
-    pub(crate) to: usize,
+    pub(crate) from: VertexId,
+    pub(crate) to: VertexId,
 }
 
 // might carry some additional data.
@@ -102,7 +102,7 @@ impl Graph {
     /// Might be useful for tests or something.
     pub(crate) fn construct_graph(
         n: usize,
-        edges_iter: impl IntoIterator<Item = (usize, usize)>,
+        edges_iter: impl IntoIterator<Item = (VertexId, VertexId)>,
     ) -> Graph {
         let vertices = (0..n).into_iter().map(|id| Vertex { id }).collect();
 
